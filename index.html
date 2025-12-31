@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Wordle Master Pro</title>
+    <style>
+        :root {
+            --correct: #6aaa64; --present: #c9b458; --absent: #3a3a3c;
+            --bg: #121213; --key-bg: #818384; --gold: #ffd700;
+        }
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body {
+            background-color: var(--bg); color: white; font-family: 'Segoe UI', sans-serif;
+            margin: 0; display: flex; flex-direction: column; align-items: center;
+            height: 100vh; overflow: hidden;
+        }
+
+        #menu-screen {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; height: 100%; gap: 15px; width: 90%;
+        }
+        .btn-menu {
+            width: 100%; padding: 18px; font-size: 1.1rem; font-weight: bold;
+            border: none; border-radius: 12px; cursor: pointer; color: white;
+        }
+
+        #game-screen { display: none; flex-direction: column; width: 100%; height: 100%; align-items: center; }
+        
+        #hud {
+            display: flex; justify-content: space-between; width: 100%; 
+            padding: 10px 20px; background: #1a1a1b; border-bottom: 1px solid #333;
+        }
+
+        #shop { display: flex; gap: 10px; padding: 10px; width: 100%; justify-content: center; }
+        .shop-btn {
+            background: #333; color: white; border: 1px solid var(--gold);
+            padding: 8px; border-radius: 5px; font-size: 0.75rem; flex: 1;
+            font-weight: bold;
+        }
+        .shop-btn:disabled { opacity: 0.3; }
+
+        .main-area {
+            flex: 1; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; width: 100%;
+        }
+
+        .board { display: grid; gap: 6px; }
+        .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .tile {
+            width: 50px; height: 50px; border: 2px solid #3a3a3c;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.6rem; font-weight: bold; text-transform: uppercase;
+        }
+
+        #keyboard { width: 100%; padding: 10px; display: flex; flex-direction: column; gap: 6px; background: #121213; }
+        .kb-row { display: flex; justify-content: center; gap: 4px; }
+        .key {
+            background: var(--key-bg); color: white; border: none;
+            padding: 16px 0; border-radius: 4px; flex: 1; font-weight: bold; font-size: 0.85rem;
+        }
+        .key.wide { flex: 1.6; }
+
+        .correct { background-color: var(--correct); border-color: var(--correct); }
+        .present { background-color: var(--present); border-color: var(--present); }
+        .absent { background-color: var(--absent); border-color: var(--absent); }
+
+        .confetti { position: fixed; width: 8px; height: 8px; top: -10px; animation: fall 3s linear forwards; z-index: 100; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen">
+        <h1 style="color: var(--correct); font-size: 2.8rem; margin: 0;">WORDLE</h1>
+        <p style="margin-bottom: 30px; color: #888;">NIVEL DE DIFICULTAD</p>
+        <button class="btn-menu" style="background: #4a90e2;" onclick="initGame('facil')">FÁCIL (8 Intentos)</button>
+        <button class="btn-menu" style="background: #6aaa64;" onclick="initGame('normal')">NORMAL (6 Intentos)</button>
+        <button class="btn-menu" style="background: #d0021b;" onclick="initGame('dificil')">DIFÍCIL (4 Intentos)</button>
+        <p id="menu-coins" style="color: var(--gold); font-weight: bold; margin-top: 20px;"></p>
+    </div>
+
+    <div id="game-screen">
+        <div id="hud">
+            <span id="mode-label" style="font-weight: bold;">MODO</span>
+            <span style="color:var(--gold); font-weight: bold;">💰 <span id="coin-txt">0</span></span>
+        </div>
+        <div id="shop">
+            <button class="shop-btn" id="btn-hint" onclick="buyHint()">PISTA (50💰)</button>
+            <button class="shop-btn" id="btn-clear" onclick="buyClear()">LIMPIAR (30💰)</button>
+        </div>
+        <div class="main-area">
+            <div id="board" class="board"></div>
+            <h2 id="game-status" style="margin-top: 15px; height: 30px; color: var(--gold);"></h2>
+        </div>
+        <div id="keyboard"></div>
+        <button id="btn-back" style="width:100%; background:#333; color:white; border:none; padding:15px; display:none; font-weight: bold;" onclick="location.reload()">VOLVER AL MENÚ</button>
+    </div>
+
+    <script>
+        // Todo el juego está dentro de un scope cerrado para evitar trampas por consola
+        (function() {
+            const DIC = ["PERRO", "GATOS", "LIBRO", "PLANO", "SILLA", "BARCO", "CIELO", "PLAYA", "FRUTA", "QUESO", "LLAVE", "NOCHE", "MUNDO", "PIANO", "CLASE", "FUEGO", "VALOR", "HUEVO", "NORTE", "RADIO"];
+            let t_w = "", u_a = 0, u_g = "", g_o = false, m_a = 6;
+            let c = parseInt(localStorage.getItem("w_coins")) || 0;
+
+            window.initGame = function(mode) {
+                document.getElementById("menu-screen").style.display = "none";
+                document.getElementById("game-screen").style.display = "flex";
+                m_a = mode === 'facil' ? 8 : (mode === 'dificil' ? 4 : 6);
+                t_w = DIC[Math.floor(Math.random()*DIC.length)];
+                document.getElementById("mode-label").textContent = mode.toUpperCase();
+                updateUI();
+                renderBoard(m_a);
+                renderKeyboard();
+            };
+
+            function renderBoard(rows) {
+                const b = document.getElementById("board"); b.innerHTML = "";
+                for(let i=0; i<rows; i++) {
+                    const r = document.createElement("div"); r.className = "row";
+                    for(let j=0; j<5; j++) r.appendChild(document.createElement("div")).className = "tile";
+                    b.appendChild(r);
+                }
+            }
+
+            function renderKeyboard() {
+                const keys = [["Q","W","E","R","T","Y","U","I","O","P"], ["A","S","D","F","G","H","J","K","L","Ñ"], ["ENT","Z","X","C","V","B","N","M","⌫"]];
+                const kb = document.getElementById("keyboard"); kb.innerHTML = "";
+                keys.forEach(row => {
+                    const d = document.createElement("div"); d.className = "kb-row";
+                    row.forEach(k => {
+                        const b = document.createElement("button"); b.textContent = k;
+                        b.className = "key" + (k.length > 1 ? " wide" : "");
+                        b.onclick = () => handleIn(k);
+                        d.appendChild(b);
+                    });
+                    kb.appendChild(d);
+                });
+            }
+
+            function handleIn(k) {
+                if(g_o) return;
+                const row = document.getElementById("board").children[u_a];
+                if(k === "ENT") { if(u_g.length === 5) validate(); }
+                else if(k === "⌫") u_g = u_g.slice(0, -1);
+                else if(u_g.length < 5 && /^[A-ZÑ]$/.test(k.toUpperCase())) u_g += k.toUpperCase();
+                for(let i=0; i<5; i++) row.children[i].textContent = u_g[i] || "";
+            }
+
+            function validate() {
+                const row = document.getElementById("board").children[u_a];
+                let states = new Array(5).fill("absent");
+                let targetArr = t_w.split("");
+
+                for(let i=0; i<5; i++) {
+                    if(u_g[i] === targetArr[i]) { states[i] = "correct"; targetArr[i] = null; }
+                }
+                for(let i=0; i<5; i++) {
+                    if(states[i] !== "correct" && targetArr.includes(u_g[i])) {
+                        states[i] = "present"; targetArr[targetArr.indexOf(u_g[i])] = null;
+                    }
+                }
+                for(let i=0; i<5; i++) row.children[i].classList.add(states[i]);
+                
+                if(u_g === t_w) finish(true);
+                else if(++u_a >= m_a) finish(false);
+                u_g = "";
+            }
+
+            function finish(win) {
+                g_o = true;
+                document.getElementById("btn-back").style.display = "block";
+                if(win) { c += 50; localStorage.setItem("w_coins", c); document.getElementById("game-status").textContent = "¡GANASTE! +50💰"; }
+                else document.getElementById("game-status").textContent = "ERA: " + t_w;
+                updateUI();
+            }
+
+            function updateUI() {
+                document.getElementById("coin-txt").textContent = c;
+                document.getElementById("menu-coins").textContent = `MIS MONEDAS: 💰 ${c}`;
+                document.getElementById("btn-hint").disabled = c < 50 || g_o;
+                document.getElementById("btn-clear").disabled = c < 30 || g_o;
+            }
+
+            window.buyHint = function() {
+                if(c < 50) return; c -= 50; updateUI();
+                alert(`PISTA: Una de las letras es "${t_w[Math.floor(Math.random()*5)]}"`);
+            };
+
+            window.buyClear = function() {
+                if(c < 30) return; c -= 30; updateUI();
+                alert("Sugerencia: Prueba palabras con muchas vocales.");
+            };
+
+            document.addEventListener("keydown", (e) => handleIn(e.key === "Backspace" ? "⌫" : e.key.toUpperCase()));
+            updateUI();
+        })();
+    </script>
+</body>
+</html>
