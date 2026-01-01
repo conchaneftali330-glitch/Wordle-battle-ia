@@ -4,102 +4,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wordle Battle IA PRO - Update 1.3</title>
+    <title>Wordle Battle IA PRO - V1.4</title>
     <style>
-        body { background-color: #0d0d0d; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .menu-container { max-width: 400px; margin: auto; border: 2px solid #28a745; padding: 20px; border-radius: 15px; background: #1a1a1a; }
-        h1 { color: #28a745; font-size: 2.5em; margin-bottom: 10px; }
-        .btn-dificultad { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; cursor: pointer; transition: 0.3s; }
-        .facil { background: #28a745; color: white; }
-        .normal { background: #007bff; color: white; }
-        .dificil { background: #dc3545; color: white; }
-        #monedas-display { color: #ffc107; font-size: 1.2em; font-weight: bold; margin-top: 20px; }
-        .seccion-codigos { margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: white; width: 60%; }
-        .btn-admin { background: transparent; color: #444; border: none; font-size: 0.7em; margin-top: 15px; display: block; width: 100%; cursor: pointer; }
-        #panel-admin { display: none; background: #332b00; padding: 10px; margin-top: 10px; border-radius: 5px; border: 1px solid #ffc107; color: #ffc107; }
-        @keyframes fadeUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+        body { background-color: #0d0d0d; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
+        .menu-container { max-width: 400px; margin: auto; border: 2px solid #28a745; padding: 15px; border-radius: 15px; background: #1a1a1a; }
+        h1 { color: #28a745; margin-bottom: 5px; }
+        #monedas-display { color: #ffc107; font-weight: bold; margin: 10px 0; }
+        
+        /* Teclado Pro */
+        .teclado { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .tecla { background: #444; padding: 10px 0; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.2em; border: none; color: white; }
+        .tecla.incorrecta { background: #1a1a1a; color: #333; cursor: not-allowed; opacity: 0.5; }
+        .tecla.correcta { background: #28a745; }
+        .tecla.presente { background: #ffc107; color: black; }
+        
+        .btn-dificultad { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: none; font-weight: bold; color: white; }
+        .facil { background: #28a745; } .normal { background: #007bff; } .dificil { background: #dc3545; }
+        #panel-admin { display: none; color: #ffc107; border: 1px solid #ffc107; padding: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="menu-container">
-        <h1>WORDLE</h1>
-        <p style="color: #888;">NIVEL DE DIFICULTAD</p>
-
-        <button class="btn-dificultad facil" onclick="iniciarJuego('facil')">FÁCIL (8 Intentos)</button>
-        <button class="btn-dificultad normal" onclick="iniciarJuego('normal')">NORMAL (6 Intentos)</button>
-        <button class="btn-dificultad dificil" onclick="iniciarJuego('dificil')">DIFÍCIL (4 Intentos)</button>
-
-        <div id="monedas-display">MIS MONEDAS: $0</div>
-
-        <div class="seccion-codigos">
-            <input type="text" id="input-codigo" placeholder="Código de regalo...">
-            <button onclick="canjearCodigo()" style="padding: 10px; background: #28a745; border: none; color: white; border-radius: 5px;">Canjear</button>
-            
-            <button class="btn-admin" onclick="accesoDesarrollador()">[ DESARROLLADORES ]</button>
-            
-            <div id="panel-admin">
-                CÓDIGO DIARIO: <span id="codigo-revelado" style="font-weight:bold;"></span>
-            </div>
-        </div>
+<div class="menu-container" id="menu-principal">
+    <h1>WORDLE IA PRO</h1>
+    <div id="monedas-display">MIS MONEDAS: $0</div>
+    <button class="btn-dificultad facil" onclick="iniciarJuego(8)">FÁCIL (8 Intentos)</button>
+    <button class="btn-dificultad normal" onclick="iniciarJuego(6)">NORMAL (6 Intentos)</button>
+    <button class="btn-dificultad dificil" onclick="iniciarJuego(4)">DIFÍCIL (4 Intentos)</button>
+    
+    <div style="margin-top:20px;">
+        <input type="text" id="input-codigo" placeholder="Código regalo..." style="padding:8px; width:50%;">
+        <button onclick="canjearCodigo()" style="padding:8px; background:#28a745; border:none; color:white;">OK</button>
     </div>
+    <button onclick="accesoDesarrollador()" style="background:none; border:none; color:#333; font-size:0.7em; margin-top:10px;">[ DESARROLLADORES ]</button>
+    <div id="panel-admin">CÓDIGO: <span id="codigo-revelado"></span></div>
+</div>
 
-    <script>
-        // --- VARIABLES GLOBALES Y PERSISTENCIA ---
-        let monedas = parseInt(localStorage.getItem('monedas')) || 0;
-        const claveAdmin = "poweradmin5678"; // Tu clave segura
+<div id="juego" style="display:none;">
+    <h2 id="msg-dificultad"></h2>
+    <div id="tablero"></div>
+    <div class="teclado" id="teclado-virtual"></div>
+    <button onclick="volverMenu()" style="margin-top:20px; background:#444; color:white; border:none; padding:10px;">Volver</button>
+</div>
 
-        function actualizarMarcador() {
-            document.getElementById('monedas-display').innerText = "MIS MONEDAS: $" + monedas;
+<script>
+    let monedas = parseInt(localStorage.getItem('monedas')) || 0;
+    const claveAdmin = "poweradmin5678"; // Tu clave segura
+    let letrasBloqueadas = [];
+
+    function actualizarMarcador() {
+        document.getElementById('monedas-display').innerText = "MIS MONEDAS: $" + monedas;
+    }
+
+    function iniciarJuego(intentos) {
+        document.getElementById('menu-principal').style.display = 'none';
+        document.getElementById('juego').style.display = 'block';
+        document.getElementById('msg-dificultad').innerText = "Intentos: " + intentos;
+        letrasBloqueadas = [];
+        generarTeclado();
+    }
+
+    function generarTeclado() {
+        const letras = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+        const tecladoDiv = document.getElementById('teclado-virtual');
+        tecladoDiv.innerHTML = "";
+        
+        letras.forEach(letra => {
+            const btn = document.createElement('button');
+            btn.innerText = letra;
+            btn.id = "tecla-" + letra;
+            btn.className = "tecla";
+            btn.onclick = () => procesarLetra(letra);
+            tecladoDiv.appendChild(btn);
+        });
+    }
+
+    function procesarLetra(letra) {
+        if (letrasBloqueadas.includes(letra)) return; // No permite escribir si está bloqueada
+
+        // --- LÓGICA DE PRUEBA DE BLOQUEO ---
+        // Aquí simulamos que si la letra no está, se bloquea
+        // En tu lógica real, esto pasaría después de comparar la palabra
+        const esCorrecta = Math.random() > 0.5; 
+
+        if (!esCorrecta) {
+            document.getElementById("tecla-" + letra).classList.add("incorrecta");
+            letrasBloqueadas.push(letra); // La añade a la lista negra
+        } else {
+            document.getElementById("tecla-" + letra).classList.add("correcta");
         }
+    }
 
-        // --- LÓGICA DE CÓDIGOS DIARIOS ---
-        function generarCodigoDelDia() {
-            const hoy = new Date();
-            const semilla = hoy.getDate() + (hoy.getMonth() + 1) * 3;
-            return "GIFT" + (semilla * 12); 
+    function accesoDesarrollador() {
+        const pass = prompt("Contraseña:");
+        if (pass === claveAdmin) {
+            document.getElementById('panel-admin').style.display = "block";
+            document.getElementById('codigo-revelado').innerText = "GIFT" + (new Date().getDate() * 12);
         }
+    }
 
-        function canjearCodigo() {
-            const input = document.getElementById('input-codigo').value.toUpperCase();
-            const codigoCorrecto = generarCodigoDelDia();
-            const hoyStr = new Date().toDateString();
+    function volverMenu() {
+        document.getElementById('menu-principal').style.display = 'block';
+        document.getElementById('juego').style.display = 'none';
+    }
 
-            if (input === codigoCorrecto) {
-                if (localStorage.getItem('usado_' + hoyStr)) {
-                    alert("Ya canjeaste el código de hoy.");
-                } else {
-                    monedas += 150;
-                    localStorage.setItem('monedas', monedas);
-                    localStorage.setItem('usado_' + hoyStr, 'true');
-                    actualizarMarcador();
-                    alert("¡Código aceptado! Ganaste $150 💰");
-                }
-            } else {
-                alert("Código incorrecto.");
-            }
-        }
-
-        // --- ACCESO DESARROLLADOR ---
-        function accesoDesarrollador() {
-            const pass = prompt("ACCESO RESTRINGIDO - Ingrese contraseña:");
-            if (pass === claveAdmin) {
-                document.getElementById('panel-admin').style.display = "block";
-                document.getElementById('codigo-revelado').innerText = generarCodigoDelDia();
-                alert("Modo Desarrollador Activado");
-            } else {
-                alert("Acceso Denegado.");
-            }
-        }
-
-        function iniciarJuego(modo) {
-            alert("Iniciando modo " + modo + "... (Aquí va tu lógica de juego)");
-            // Aquí puedes llamar a la función alGanar(modo) para probar las monedas
-        }
-
-        // Carga inicial
-        window.onload = actualizarMarcador;
-    </script>
+    window.onload = actualizarMarcador;
+</script>
 </body>
 </html>
