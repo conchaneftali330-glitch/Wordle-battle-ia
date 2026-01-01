@@ -3,77 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wordle Battle IA PRO - V1.6</title>
+    <title>Wordle Battle IA PRO - V1.7</title>
     <style>
-        body { background-color: #0d0d0d; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
+        body { background-color: #0d0d0d; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; }
         .menu-container { max-width: 400px; margin: auto; border: 2px solid #28a745; padding: 15px; border-radius: 15px; background: #1a1a1a; }
-        #monedas-display { color: #ffc107; font-weight: bold; margin: 10px 0; }
+        #monedas-display { color: #ffc107; font-weight: bold; margin: 10px 0; font-size: 1.2em; }
         
-        /* TABLERO DE CUADRITOS */
-        .grid { display: grid; grid-template-rows: repeat(6, 1fr); gap: 5px; max-width: 300px; margin: 20px auto; }
+        /* COLORES WORDLE */
+        .tile { width: 100%; height: 50px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; background: #111; border-radius: 5px; transition: 0.5s; }
+        .correct { background-color: #538d4e !important; border-color: #538d4e !important; } /* Verde */
+        .present { background-color: #b59f3b !important; border-color: #b59f3b !important; } /* Amarillo */
+        .absent { background-color: #3a3a3c !important; border-color: #3a3a3c !important; }  /* Gris */
+
+        .grid { display: grid; grid-template-rows: repeat(8, 1fr); gap: 5px; max-width: 300px; margin: 20px auto; }
         .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
-        .tile { width: 100%; height: 50px; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; text-transform: uppercase; background: #111; }
-        
         .teclado { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-width: 500px; margin: 20px auto; }
-        .tecla { background: #444; padding: 12px 0; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; border: none; }
-        .btn-enviar { grid-column: span 2; background: #28a745; }
-        .btn-borrar { grid-column: span 2; background: #dc3545; }
-        
-        #turno-display { background: #ffc107; color: black; padding: 10px; font-weight: bold; border-radius: 5px; margin-bottom: 10px; display: none; }
+        .tecla { background: #818384; padding: 12px 0; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; border: none; }
+        .btn-esp { grid-column: span 2; }
         .btn-dificultad { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; }
         .facil { background: #28a745; } .normal { background: #007bff; } .dificil { background: #dc3545; } .batalla { background: #9b59b6; }
+        #panel-admin { display: none; color: #ffc107; border: 1px solid #ffc107; padding: 10px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-<div class="menu-container" id="menu-principal">
+<div id="menu-principal" class="menu-container">
     <h1>WORDLE IA PRO</h1>
     <div id="monedas-display">MIS MONEDAS: $0</div>
     <button class="btn-dificultad facil" onclick="iniciarJuego(8, 'SOLO')">FÁCIL (8 Intentos)</button>
     <button class="btn-dificultad normal" onclick="iniciarJuego(6, 'SOLO')">NORMAL (6 Intentos)</button>
     <button class="btn-dificultad dificil" onclick="iniciarJuego(4, 'SOLO')">DIFÍCIL (4 Intentos)</button>
     <button class="btn-dificultad batalla" onclick="iniciarJuego(6, 'BATTLE')">⚔️ MODO BATALLA</button>
+
+    <div style="margin-top:20px;">
+        <input type="text" id="input-codigo" placeholder="Código regalo..." style="padding:8px; width:50%; background:#222; color:white; border:1px solid #444;">
+        <button onclick="canjearCodigo()" style="padding:8px; background:#28a745; color:white; border:none; border-radius:5px;">Canjear</button>
+    </div>
+    <button onclick="accesoDesarrollador()" style="background:none; border:none; color:#333; font-size:0.7em; margin-top:15px; cursor:pointer;">[ DESARROLLADORES ]</button>
+    <div id="panel-admin">CÓDIGO DE HOY: <span id="codigo-revelado"></span></div>
 </div>
 
 <div id="juego" style="display:none;">
-    <div id="turno-display">TURNO: JUGADOR 1</div>
+    <div id="turno-display" style="background:#ffc107; color:black; font-weight:bold; padding:10px; border-radius:5px; margin-bottom:10px; display:none;"></div>
     <div class="grid" id="tablero"></div>
     <div class="teclado" id="teclado-virtual"></div>
-    <button onclick="location.reload()" style="margin-top:20px; background:#444; color:white; border:none; padding:10px;">Salir</button>
+    <button onclick="location.reload()" style="margin-top:20px; background:#444; color:white; border:none; padding:10px; border-radius:5px;">Abandonar</button>
 </div>
 
 <script>
     let monedas = parseInt(localStorage.getItem('monedas')) || 0;
+    const claveAdmin = "poweradmin5678"; 
     let modoJuego = 'SOLO';
     let intentosMax = 6;
     let intentoActual = 0;
     let letraActual = 0;
-    let palabraDelDia = "JUEGO"; // Aquí podrías poner una lista aleatoria
     let turnoJugador = 1;
+    let palabraSecreta = "LUCES"; // Puedes cambiarla o hacerla aleatoria
+    let juegoTerminado = false;
 
     function iniciarJuego(intentos, modo) {
-        modoJuego = modo;
-        intentosMax = intentos;
+        modoJuego = modo; intentosMax = intentos;
         document.getElementById('menu-principal').style.display = 'none';
         document.getElementById('juego').style.display = 'block';
-        
-        if(modo === 'BATTLE') document.getElementById('turno-display').style.display = 'block';
-        
-        generarTablero();
-        generarTeclado();
-        actualizarMarcador();
+        if(modo === 'BATTLE') {
+            const td = document.getElementById('turno-display');
+            td.style.display = 'block'; td.innerText = "TURNO: JUGADOR 1";
+        }
+        generarTablero(); generarTeclado(); actualizarMarcador();
     }
 
     function generarTablero() {
         const tablero = document.getElementById('tablero');
         tablero.innerHTML = "";
         for (let i = 0; i < intentosMax; i++) {
-            let row = document.createElement("div");
-            row.className = "row";
+            let row = document.createElement("div"); row.className = "row";
             for (let j = 0; j < 5; j++) {
-                let tile = document.createElement("div");
-                tile.className = "tile";
-                tile.id = `t-${i}-${j}`;
+                let tile = document.createElement("div"); tile.className = "tile"; tile.id = `t-${i}-${j}`;
                 row.appendChild(tile);
             }
             tablero.appendChild(row);
@@ -85,21 +90,14 @@
         const tecladoDiv = document.getElementById('teclado-virtual');
         tecladoDiv.innerHTML = "";
         letras.forEach(l => {
-            const b = document.createElement('button');
-            b.innerText = l; b.className = "tecla";
-            b.onclick = () => escribirLetra(l);
+            const b = document.createElement('button'); b.innerText = l; b.className = "tecla"; b.id = "key-"+l;
+            b.onclick = () => { if(!juegoTerminado) escribirLetra(l); };
             tecladoDiv.appendChild(b);
         });
-        // Botón Borrar
-        const btnB = document.createElement('button');
-        btnB.innerText = "DEL"; btnB.className = "tecla btn-borrar";
-        btnB.onclick = borrarLetra;
-        tecladoDiv.appendChild(btnB);
-        // Botón Enviar
-        const btnE = document.createElement('button');
-        btnE.innerText = "ENTER"; btnE.className = "tecla btn-enviar";
-        btnE.onclick = enviarPalabra;
-        tecladoDiv.appendChild(btnE);
+        const btnB = document.createElement('button'); btnB.innerText = "DEL"; btnB.className = "tecla btn-esp"; b.style.background = "#dc3545";
+        btnB.onclick = borrarLetra; tecladoDiv.appendChild(btnB);
+        const btnE = document.createElement('button'); btnE.innerText = "ENTER"; btnE.className = "tecla btn-esp"; btnE.style.background = "#28a745";
+        btnE.onclick = enviarPalabra; tecladoDiv.appendChild(btnE);
     }
 
     function escribirLetra(l) {
@@ -117,28 +115,55 @@
     }
 
     function enviarPalabra() {
-        if (letraActual === 5) {
-            // Aquí iría la lógica de colores (verde/amarillo/gris)
-            
-            if (modoJuego === 'BATTLE') {
+        if (letraActual !== 5) return alert("Faltan letras");
+        
+        let intento = "";
+        for(let i=0; i<5; i++) { intento += document.getElementById(`t-${intentoActual}-${i}`).innerText; }
+
+        // LÓGICA DE COLORES WORDLE
+        for(let i=0; i<5; i++) {
+            let tile = document.getElementById(`t-${intentoActual}-${i}`);
+            let letra = intento[i];
+            if(letra === palabraSecreta[i]) { tile.classList.add("correct"); }
+            else if(palabraSecreta.includes(letra)) { tile.classList.add("present"); }
+            else { tile.classList.add("absent"); }
+        }
+
+        if(intento === palabraSecreta) {
+            alert("¡GANASTE! +$50 monedas");
+            monedas += 50; localStorage.setItem('monedas', monedas);
+            juegoTerminado = true;
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            intentoActual++; letraActual = 0;
+            if(modoJuego === 'BATTLE') {
                 turnoJugador = (turnoJugador === 1) ? 2 : 1;
                 const td = document.getElementById('turno-display');
                 td.innerText = "TURNO: JUGADOR " + turnoJugador;
                 td.style.background = (turnoJugador === 1) ? "#ffc107" : "#007bff";
-                alert("Cambio de turno. ¡Le toca al siguiente!");
             }
-            
-            intentoActual++;
-            letraActual = 0;
-            if (intentoActual >= intentosMax) alert("Fin del juego");
-        } else {
-            alert("Faltan letras");
+            if(intentoActual >= intentosMax) { alert("Perdiste. La palabra era: " + palabraSecreta); location.reload(); }
         }
     }
 
-    function actualizarMarcador() {
-        document.getElementById('monedas-display').innerText = "MIS MONEDAS: $" + monedas;
+    function canjearCodigo() {
+        const input = document.getElementById('input-codigo').value.toUpperCase();
+        const codigoCorrecto = "GIFT" + (new Date().getDate() * 12);
+        if (input === codigoCorrecto) {
+            monedas += 150; localStorage.setItem('monedas', monedas);
+            actualizarMarcador(); alert("¡Canjeado! +$150");
+        }
     }
+
+    function accesoDesarrollador() {
+        if (prompt("Contraseña:") === claveAdmin) {
+            document.getElementById('panel-admin').style.display = "block";
+            document.getElementById('codigo-revelado').innerText = "GIFT" + (new Date().getDate() * 12);
+        }
+    }
+
+    function actualizarMarcador() { document.getElementById('monedas-display').innerText = "MIS MONEDAS: $" + monedas; }
+    window.onload = actualizarMarcador;
 </script>
 </body>
 </html>
